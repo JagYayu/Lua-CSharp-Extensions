@@ -198,5 +198,5 @@ public sealed partial class IntArray : ILuaUserData
 	}
 
 	[LuaMember("getLength")]
-	public int GetLength() => Array.Length;
+	public double GetLength() => Array.Length;
 }
