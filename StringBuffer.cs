@@ -87,21 +87,21 @@ public sealed partial class StringBuffer
 	[LuaMember("encodeString")]
 	public string EncodeString(LuaValue value) => Convert.ToBase64String(Encode(value).Bytes);
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
 	private void WriteValue(BinaryWriter writer, LuaValue luaValue, int depth)
 	{
+		writer.Write((byte)luaValue.Type);
 		switch (luaValue.Type)
 		{
 			case LuaValueType.Nil:
 				break;
 			case LuaValueType.Boolean:
-				WriteBoolean(writer, luaValue.Read<bool>());
+				writer.Write(luaValue.Read<bool>());
 				break;
 			case LuaValueType.Number:
-				WriteNumber(writer, luaValue.Read<double>());
+				writer.Write(luaValue.Read<double>());
 				break;
 			case LuaValueType.String:
-				WriteString(writer, luaValue.Read<string>());
+				writer.Write(luaValue.Read<string>());
 				break;
 			case LuaValueType.Table:
 				WriteTable(writer, luaValue.Read<LuaTable>(), depth + 1);
@@ -115,28 +115,7 @@ public sealed partial class StringBuffer
 		}
 	}
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-	private static void WriteBoolean(BinaryWriter writer, bool boolean)
-	{
-		writer.Write((byte)LuaValueType.Boolean);
-		writer.Write(boolean);
-	}
-
-	[MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-	private static void WriteNumber(BinaryWriter writer, double number)
-	{
-		writer.Write((byte)LuaValueType.Number);
-		writer.Write(number);
-	}
-
-	[MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
-	private static void WriteString(BinaryWriter writer, string str)
-	{
-		writer.Write((byte)LuaValueType.String);
-		writer.Write(str);
-	}
-
-	[MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private void WriteTable(BinaryWriter writer, LuaTable table, int depth)
 	{
 		if (depth > _options.MaxDepth)
@@ -154,7 +133,7 @@ public sealed partial class StringBuffer
 		}
 	}
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private void WriteUserData(BinaryWriter writer, ILuaUserData userData)
 	{
 		writer.Write((byte)LuaValueType.UserData);
@@ -192,7 +171,6 @@ public sealed partial class StringBuffer
 		return ReadValue(reader, 0);
 	}
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
 	private LuaValue ReadValue(BinaryReader reader, int depth)
 	{
 		if (depth > _options.MaxDepth)
@@ -213,7 +191,7 @@ public sealed partial class StringBuffer
 		};
 	}
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private LuaTable ReadTable(BinaryReader reader, int depth)
 	{
 		var arrayLength = reader.ReadInt32();
@@ -228,7 +206,7 @@ public sealed partial class StringBuffer
 		return table;
 	}
 
-	[MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private LuaValue ReadUserData(BinaryReader reader)
 	{
 		var fullName = reader.ReadString();

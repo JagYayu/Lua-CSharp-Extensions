@@ -44,12 +44,39 @@ public static partial class LuaTableExtensions
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static T[] ToArray<T>(this LuaTable table)
+	{
+		var array = new T[table.ArrayLength];
+
+		foreach (var (k, v) in table.IPairs())
+		{
+			if (v.TryRead<T>(out var value))
+			{
+				array[(int)k] = value;
+			}
+		}
+
+		return array;
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static IEnumerable<(double key, LuaValue value)> IPairs(this LuaTable table)
 	{
 		double index = 1;
 		while (table.TryGetValue(index, out var value))
 		{
 			yield return (index, value);
+			index++;
+		}
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static IEnumerable<(double key, TValue value)> IPairs<TValue>(this LuaTable table)
+	{
+		double index = 1;
+		while (table.TryGetValue(index, out var value))
+		{
+			yield return (index, value.Read<TValue>());
 			index++;
 		}
 	}

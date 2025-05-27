@@ -3,46 +3,38 @@ using Lua;
 
 namespace LuaExt;
 
-public enum IntArrayType : sbyte
-{
-	Int8,
-	Int16,
-	Int32,
-	Int64,
-}
-
 [LuaObject("IntArray")]
-public sealed partial class IntArray : ILuaUserData
+public sealed partial class Array : ILuaUserData
 {
-	public Array Array { get; set; }
-	public IntArrayType Type { get; private set; }
+	public System.Array Raw { get; set; }
+	public ValueType Type { get; private set; }
 
 	[LuaMember("newInt8Array")]
-	public static IntArray NewInt8Array(double length) => new(IntArrayType.Int8, (int)double.Floor(length));
+	public static Array NewInt8Array(double length) => new(ValueType.Int8, (int)double.Floor(length));
 
 	[LuaMember("newInt16Array")]
-	public static IntArray NewInt16Array(double length) => new(IntArrayType.Int16, (int)double.Floor(length));
+	public static Array NewInt16Array(double length) => new(ValueType.Int16, (int)double.Floor(length));
 
 	[LuaMember("newInt32Array")]
-	public static IntArray NewInt32Array(double length) => new(IntArrayType.Int32, (int)double.Floor(length));
+	public static Array NewInt32Array(double length) => new(ValueType.Int32, (int)double.Floor(length));
 
 	[LuaMember("newInt64Array")]
-	public static IntArray NewInt64Array(double length) => new(IntArrayType.Int64, (int)double.Floor(length));
+	public static Array NewInt64Array(double length) => new(ValueType.Int64, (int)double.Floor(length));
 
 	private static bool _globalUserDataInit = true;
 
 	[MethodImpl(MethodImplOptions.AggressiveOptimization)]
 	private static LuaValue GlobalUserDataRead(BinaryReader reader)
 	{
-		var type = (IntArrayType)reader.ReadSByte();
+		var type = (ValueType)reader.ReadSByte();
 		var length = reader.ReadInt32();
-		var intArray = new IntArray(type, length);
+		var intArray = new Array(type, length);
 
 		switch (type)
 		{
-			case IntArrayType.Int8:
+			case ValueType.Int8:
 				{
-					var array = (sbyte[])intArray.Array;
+					var array = (sbyte[])intArray.Raw;
 					for (var i = 0; i < length; ++i)
 					{
 						array[i] = reader.ReadSByte();
@@ -50,27 +42,27 @@ public sealed partial class IntArray : ILuaUserData
 				}
 
 				break;
-			case IntArrayType.Int16:
+			case ValueType.Int16:
 				{
-					var array = (short[])intArray.Array;
+					var array = (short[])intArray.Raw;
 					for (var i = 0; i < length; ++i)
 					{
 						array[i] = reader.ReadSByte();
 					}
 				}
 				break;
-			case IntArrayType.Int32:
+			case ValueType.Int32:
 				{
-					var array = (int[])intArray.Array;
+					var array = (int[])intArray.Raw;
 					for (var i = 0; i < length; ++i)
 					{
 						array[i] = reader.ReadSByte();
 					}
 				}
 				break;
-			case IntArrayType.Int64:
+			case ValueType.Int64:
 				{
-					var array = (long[])intArray.Array;
+					var array = (long[])intArray.Raw;
 					for (var i = 0; i < length; ++i)
 					{
 						array[i] = reader.ReadSByte();
@@ -86,8 +78,8 @@ public sealed partial class IntArray : ILuaUserData
 
 	private static void GlobalUserDataWrite(BinaryWriter writer, ILuaUserData userData)
 	{
-		var intArray = (IntArray)userData;
-		var array = intArray.Array;
+		var intArray = (Array)userData;
+		var array = intArray.Raw;
 		writer.Write((sbyte)intArray.Type);
 		var length = array.Length;
 
@@ -95,25 +87,25 @@ public sealed partial class IntArray : ILuaUserData
 		{
 			switch (intArray.Type)
 			{
-				case IntArrayType.Int8:
+				case ValueType.Int8:
 					fixed (sbyte* p = (sbyte[])array)
 					{
 						writer.Write(new ReadOnlySpan<byte>(p, length));
 					}
 					break;
-				case IntArrayType.Int16:
+				case ValueType.Int16:
 					fixed (short* p = (short[])array)
 					{
 						writer.Write(new ReadOnlySpan<byte>(p, length));
 					}
 					break;
-				case IntArrayType.Int32:
+				case ValueType.Int32:
 					fixed (int* p = (int[])array)
 					{
 						writer.Write(new ReadOnlySpan<byte>(p, length));
 					}
 					break;
-				case IntArrayType.Int64:
+				case ValueType.Int64:
 					fixed (long* p = (long[])array)
 					{
 						writer.Write(new ReadOnlySpan<byte>(p, length));
@@ -127,35 +119,35 @@ public sealed partial class IntArray : ILuaUserData
 		writer.Write(length);
 	}
 
-	public IntArray(IntArrayType type, int length)
+	public Array(ValueType type, int length)
 	{
 		if (_globalUserDataInit)
 		{
 			_globalUserDataInit = false;
-			StringBuffer.RegisterGlobalUserData<IntArray>(GlobalUserDataRead, GlobalUserDataWrite);
+			StringBuffer.RegisterGlobalUserData<Array>(GlobalUserDataRead, GlobalUserDataWrite);
 		}
 
 		switch (type)
 		{
-			case IntArrayType.Int8:
-				Array = new sbyte[length];
+			case ValueType.Int8:
+				Raw = new sbyte[length];
 				Type = type;
 				break;
-			case IntArrayType.Int16:
-				Array = new short[length];
+			case ValueType.Int16:
+				Raw = new short[length];
 				Type = type;
 				break;
-			case IntArrayType.Int32:
-				Array = new int[length];
+			case ValueType.Int32:
+				Raw = new int[length];
 				Type = type;
 				break;
-			case IntArrayType.Int64:
-				Array = new long[length];
+			case ValueType.Int64:
+				Raw = new long[length];
 				Type = type;
 				break;
 			default:
-				Array = Array.Empty<sbyte>();
-				Type = IntArrayType.Int8;
+				Raw = System.Array.Empty<sbyte>();
+				Type = ValueType.Int8;
 				break;
 		}
 	}
@@ -166,10 +158,10 @@ public sealed partial class IntArray : ILuaUserData
 		var i = (int)index;
 		return Type switch
 		{
-			IntArrayType.Int8 => ((sbyte[])Array)[i],
-			IntArrayType.Int16 => ((short[])Array)[i],
-			IntArrayType.Int32 => ((int[])Array)[i],
-			IntArrayType.Int64 => ((long[])Array)[i],
+			ValueType.Int8 => ((sbyte[])Raw)[i],
+			ValueType.Int16 => ((short[])Raw)[i],
+			ValueType.Int32 => ((int[])Raw)[i],
+			ValueType.Int64 => ((long[])Raw)[i],
 			_ => (double)0,
 		};
 	}
@@ -180,17 +172,17 @@ public sealed partial class IntArray : ILuaUserData
 		var i = (int)index;
 		switch (Type)
 		{
-			case IntArrayType.Int8:
-				((sbyte[])Array)[i] = (sbyte)value;
+			case ValueType.Int8:
+				((sbyte[])Raw)[i] = (sbyte)value;
 				break;
-			case IntArrayType.Int16:
-				((short[])Array)[i] = (short)value;
+			case ValueType.Int16:
+				((short[])Raw)[i] = (short)value;
 				break;
-			case IntArrayType.Int32:
-				((int[])Array)[i] = (int)value;
+			case ValueType.Int32:
+				((int[])Raw)[i] = (int)value;
 				break;
-			case IntArrayType.Int64:
-				((long[])Array)[i] = (long)value;
+			case ValueType.Int64:
+				((long[])Raw)[i] = (long)value;
 				break;
 			default:
 				break;
@@ -198,5 +190,5 @@ public sealed partial class IntArray : ILuaUserData
 	}
 
 	[LuaMember("getLength")]
-	public double GetLength() => Array.Length;
+	public double GetLength() => Raw.Length;
 }
