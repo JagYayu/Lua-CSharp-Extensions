@@ -34,4 +34,3 @@ Until then, feel free to copy whatever useful you need into your project.
 ## License
 
 Licensed under the [WTFPL](LICENSE).
-*Do whatever the f\*\*k you want*

@@ -19,6 +19,16 @@ public static partial class LuaTableExtensions
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static void ClearArray(this LuaTable table) => System.Array.Clear(PrivateFieldGetter.Get<LuaTable, LuaValue[]>(table, "field"));
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static void ClearTable(this LuaTable table)
+	{
+		table.ClearArray();
+		table.Clear();
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static int GetArrayCapacity(this LuaTable table) => PrivateFieldGetter.Get<LuaTable, LuaValue[]>(table, "array").Length;
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
