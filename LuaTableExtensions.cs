@@ -29,7 +29,13 @@ public static partial class LuaTableExtensions
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static int GetArrayCapacity(this LuaTable table) => PrivateFieldGetter.Get<LuaTable, LuaValue[]>(table, "array").Length;
+	public static void DeepCopy(this LuaTable table)
+	{
+		throw new NotImplementedException();
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static int GetArrayCapacity(this LuaTable table) => table.GetPrivateFieldArray().Length;
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static T? GetValueOrDefault<T>(this LuaTable table, LuaValue key, T? @default = default)
@@ -51,6 +57,16 @@ public static partial class LuaTableExtensions
 		}
 
 		return @default();
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static void ShallowCopy(this LuaTable table)
+	{
+		var clone = new LuaTable(table.GetPrivateFieldArray().Length, table.HashMapCount);
+		foreach (var (key, value) in table.Pairs())
+		{
+			clone[key] = value;
+		}
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]

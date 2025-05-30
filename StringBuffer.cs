@@ -2,10 +2,45 @@ using System.IO.Compression;
 using System.Runtime.CompilerServices;
 using Lua;
 
-using UserDataReader = System.Func<System.IO.BinaryReader, Lua.LuaValue>;
-using UserDataWriter = System.Action<System.IO.BinaryWriter, Lua.ILuaUserData>;
-
 namespace LuaExt;
+
+using UserDataReader = Func<IStringBufferReader, LuaValue>;
+using UserDataWriter = Action<IStringBufferWriter, ILuaUserData>;
+
+public interface IStringBufferReader
+{
+	public bool ReadBoolean();
+	public byte ReadByte();
+	public float ReadFloat();
+	public double ReadDouble();
+	public int ReadInt();
+	public long ReadLong();
+	public short ReadShort();
+	public string ReadString();
+}
+
+public interface IStringBufferWriter
+{
+	public void Write(bool value);
+	public void Write(byte value);
+	public void Write(float value);
+	public void Write(double value);
+	public void Write(int value);
+	public void Write(long value);
+	public void Write(short value);
+	public void Write(string value);
+}
+
+internal sealed class StringBufferBinaryReader(Stream stream) : BinaryReader(stream), IStringBufferReader
+{
+	public float ReadFloat() => ReadSingle();
+	public int ReadInt() => ReadInt32();
+	public long ReadLong() => ReadInt64();
+	public short ReadShort() => ReadShort();
+}
+
+internal sealed class StringBufferBinaryWriter(Stream stream) : BinaryWriter(stream), IStringBufferWriter
+{ }
 
 [LuaObject("StringBufferData")]
 public sealed partial class StringBufferData
@@ -35,6 +70,7 @@ public sealed partial class StringBufferOptions
 /// Serialize lua values into binary string, or deserialize into lua values.
 /// ⚠ Does not support tables that contains lua threads, lua functions, or have circular references.
 /// ⚠ Serializing tables with the same reference will create different copies.
+/// In addition, `Serialize` & `Deserialize` functions are used for library usages, you can wrap custom writer and reader. (e.g. serializing in LiteNetLib)
 /// </summary>
 [LuaObject("StringBuffer")]
 public sealed partial class StringBuffer
@@ -79,7 +115,7 @@ public sealed partial class StringBuffer
 	{
 		using var baseStream = new MemoryStream();
 		using Stream stream = _options.Compress ? new DeflateStream(baseStream, CompressionLevel.Fastest, leaveOpen: true) : baseStream;
-		using var writer = new BinaryWriter(stream);
+		using var writer = new StringBufferBinaryWriter(stream);
 		WriteValue(writer, luaValue, 1);
 		return new(baseStream.GetBuffer());
 	}
@@ -87,7 +123,9 @@ public sealed partial class StringBuffer
 	[LuaMember("encodeString")]
 	public string EncodeString(LuaValue value) => Convert.ToBase64String(Encode(value).Bytes);
 
-	private void WriteValue(BinaryWriter writer, LuaValue luaValue, int depth)
+	public void Serialize(LuaValue luaValue, IStringBufferWriter writer) => WriteValue(writer, luaValue, 1);
+
+	private void WriteValue(IStringBufferWriter writer, LuaValue luaValue, int depth)
 	{
 		writer.Write((byte)luaValue.Type);
 		switch (luaValue.Type)
@@ -116,7 +154,7 @@ public sealed partial class StringBuffer
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private void WriteTable(BinaryWriter writer, LuaTable table, int depth)
+	private void WriteTable(IStringBufferWriter writer, LuaTable table, int depth)
 	{
 		if (depth > _options.MaxDepth)
 		{
@@ -134,7 +172,7 @@ public sealed partial class StringBuffer
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private void WriteUserData(BinaryWriter writer, ILuaUserData userData)
+	private void WriteUserData(IStringBufferWriter writer, ILuaUserData userData)
 	{
 		writer.Write((byte)LuaValueType.UserData);
 		var fullName = userData.GetType().FullName;
@@ -154,7 +192,7 @@ public sealed partial class StringBuffer
 		}
 	}
 
-	private void WriteUnknown(BinaryWriter writer, object unknown)
+	private void WriteUnknown(IStringBufferWriter _1, object _2)
 	{
 		if (!_options.SuppressError)
 		{
@@ -167,11 +205,19 @@ public sealed partial class StringBuffer
 	{
 		using var baseStream = new MemoryStream(data.Bytes);
 		using Stream stream = _options.Compress ? new DeflateStream(baseStream, CompressionMode.Decompress) : baseStream;
-		using var reader = new BinaryReader(stream);
+		using var reader = new StringBufferBinaryReader(stream);
 		return ReadValue(reader, 0);
 	}
 
-	private LuaValue ReadValue(BinaryReader reader, int depth)
+	[LuaMember("decodeString")]
+	public LuaValue DecodeString(string str) => Decode(new StringBufferData(Convert.FromBase64String(str)));
+
+	public LuaValue Deserialize(IStringBufferReader reader)
+	{
+		return ReadValue(reader, 1);
+	}
+
+	private LuaValue ReadValue(IStringBufferReader reader, int depth)
 	{
 		if (depth > _options.MaxDepth)
 		{
@@ -192,10 +238,10 @@ public sealed partial class StringBuffer
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private LuaTable ReadTable(BinaryReader reader, int depth)
+	private LuaTable ReadTable(IStringBufferReader reader, int depth)
 	{
-		var arrayLength = reader.ReadInt32();
-		var hashMapCount = reader.ReadInt32();
+		var arrayLength = reader.ReadInt();
+		var hashMapCount = reader.ReadInt();
 		var table = new LuaTable(arrayLength, hashMapCount);
 		for (int _ = 0; _ < arrayLength + hashMapCount; _++)
 		{
@@ -207,7 +253,7 @@ public sealed partial class StringBuffer
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private LuaValue ReadUserData(BinaryReader reader)
+	private LuaValue ReadUserData(IStringBufferReader reader)
 	{
 		var fullName = reader.ReadString();
 		if (fullName != string.Empty && _globalUserData.TryGetValue(fullName, out var functions))
@@ -225,7 +271,7 @@ public sealed partial class StringBuffer
 		throw new Exception("Unsupported userData");
 	}
 
-	private LuaValue ReadUnknown(BinaryReader _)
+	private LuaValue ReadUnknown(IStringBufferReader _)
 	{
 		if (!_options.SuppressError)
 		{

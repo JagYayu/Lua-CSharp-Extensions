@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using Lua;
 
 namespace LuaExt;
 
@@ -27,4 +28,6 @@ internal static class PrivateFieldGetter
 
 		return ((Func<TClass, TField>)getter)(@object);
 	}
+
+	internal static LuaValue[] GetPrivateFieldArray(this LuaTable table) => Get<LuaTable, LuaValue[]>(table, "array");
 }
