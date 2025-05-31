@@ -24,10 +24,10 @@ public sealed partial class Array : ILuaUserData
 	private static bool _globalUserDataInit = true;
 
 	[MethodImpl(MethodImplOptions.AggressiveOptimization)]
-	private static LuaValue GlobalUserDataRead(BinaryReader reader)
+	private static LuaValue GlobalUserDataRead(IStringBufferReader reader)
 	{
 		var type = (ValueType)reader.ReadSByte();
-		var length = reader.ReadInt32();
+		var length = reader.ReadInt();
 		var intArray = new Array(type, length);
 
 		switch (type)
@@ -76,47 +76,63 @@ public sealed partial class Array : ILuaUserData
 		return intArray;
 	}
 
-	private static void GlobalUserDataWrite(BinaryWriter writer, ILuaUserData userData)
+	private static void GlobalUserDataWrite(IStringBufferWriter writer, ILuaUserData userData)
 	{
 		var intArray = (Array)userData;
-		var array = intArray.Raw;
 		writer.Write((sbyte)intArray.Type);
-		var length = array.Length;
 
-		unsafe
+		var array = intArray.Raw;
+		if (array is sbyte[] arr8)
 		{
-			switch (intArray.Type)
-			{
-				case ValueType.Int8:
-					fixed (sbyte* p = (sbyte[])array)
-					{
-						writer.Write(new ReadOnlySpan<byte>(p, length));
-					}
-					break;
-				case ValueType.Int16:
-					fixed (short* p = (short[])array)
-					{
-						writer.Write(new ReadOnlySpan<byte>(p, length));
-					}
-					break;
-				case ValueType.Int32:
-					fixed (int* p = (int[])array)
-					{
-						writer.Write(new ReadOnlySpan<byte>(p, length));
-					}
-					break;
-				case ValueType.Int64:
-					fixed (long* p = (long[])array)
-					{
-						writer.Write(new ReadOnlySpan<byte>(p, length));
-					}
-					break;
-				default:
-					return;
-			}
+			writer.Write(arr8);
+		}
+		else if (array is short[] arr16)
+		{
+			writer.Write(arr16);
+		}
+		else if (array is int[] arr32)
+		{
+			writer.Write(arr32);
+		}
+		else if (array is long[] arr64)
+		{
+			writer.Write(arr64);
 		}
 
-		writer.Write(length);
+		// unsafe
+		// {
+		// 	switch (intArray.Type)
+		// 	{
+		// 		case ValueType.Int8:
+		// 			fixed (sbyte* p = (sbyte[])array)
+		// 			{
+		// 				writer.Write(new ReadOnlySpan<byte>(p, length));
+		// 			}
+		// 			break;
+		// 		case ValueType.Int16:
+		// 			fixed (short* p = (short[])array)
+		// 			{
+		// 				writer.Write(new ReadOnlySpan<byte>(p, length));
+		// 			}
+		// 			break;
+		// 		case ValueType.Int32:
+		// 			fixed (int* p = (int[])array)
+		// 			{
+		// 				writer.Write(new ReadOnlySpan<byte>(p, length));
+		// 			}
+		// 			break;
+		// 		case ValueType.Int64:
+		// 			fixed (long* p = (long[])array)
+		// 			{
+		// 				writer.Write(new ReadOnlySpan<byte>(p, length));
+		// 			}
+		// 			break;
+		// 		default:
+		// 			return;
+		// 	}
+		// }
+
+		writer.Write(array.Length);
 	}
 
 	public Array(ValueType type, int length)

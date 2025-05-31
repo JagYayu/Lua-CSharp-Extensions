@@ -1,3 +1,5 @@
+namespace LuaExt;
+
 public enum ValueType : sbyte
 {
 	Bool,

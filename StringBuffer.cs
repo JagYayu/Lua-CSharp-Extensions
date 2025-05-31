@@ -15,6 +15,7 @@ public interface IStringBufferReader
 	public double ReadDouble();
 	public int ReadInt();
 	public long ReadLong();
+	public sbyte ReadSByte();
 	public short ReadShort();
 	public string ReadString();
 }
@@ -27,8 +28,14 @@ public interface IStringBufferWriter
 	public void Write(double value);
 	public void Write(int value);
 	public void Write(long value);
+	public void Write(sbyte value);
 	public void Write(short value);
 	public void Write(string value);
+
+	public void Write(sbyte[] value);
+	public void Write(short[] value);
+	public void Write(int[] value);
+	public void Write(long[] value);
 }
 
 internal sealed class StringBufferBinaryReader(Stream stream) : BinaryReader(stream), IStringBufferReader
@@ -40,7 +47,51 @@ internal sealed class StringBufferBinaryReader(Stream stream) : BinaryReader(str
 }
 
 internal sealed class StringBufferBinaryWriter(Stream stream) : BinaryWriter(stream), IStringBufferWriter
-{ }
+{
+	public void Write(sbyte[] value)
+	{
+		unsafe
+		{
+			fixed (sbyte* p = value)
+			{
+				Write(new ReadOnlySpan<byte>(p, value.Length));
+			}
+		}
+	}
+
+	public void Write(short[] value)
+	{
+		unsafe
+		{
+			fixed (short* p = value)
+			{
+				Write(new ReadOnlySpan<byte>(p, value.Length));
+			}
+		}
+	}
+
+	public void Write(int[] value)
+	{
+		unsafe
+		{
+			fixed (int* p = value)
+			{
+				Write(new ReadOnlySpan<byte>(p, value.Length));
+			}
+		}
+	}
+
+	public void Write(long[] value)
+	{
+		unsafe
+		{
+			fixed (long* p = value)
+			{
+				Write(new ReadOnlySpan<byte>(p, value.Length));
+			}
+		}
+	}
+}
 
 [LuaObject("StringBufferData")]
 public sealed partial class StringBufferData
