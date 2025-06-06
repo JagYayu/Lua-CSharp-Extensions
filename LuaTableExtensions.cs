@@ -78,7 +78,7 @@ public static partial class LuaTableExtensions
 		{
 			if (v.TryRead<T>(out var value))
 			{
-				array[(int)k] = value;
+				array[(int)k - 1] = value;
 			}
 		}
 
